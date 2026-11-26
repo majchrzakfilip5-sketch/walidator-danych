@@ -1,0 +1,130 @@
+# PRZYKŁAD mapowania. Pokazuje strukturę, nie konkretne wdrożenie:
+# nazwy kolumn, kategorie i słownik AI należą do profilu, poza tym repo.
+# =====================================================================
+#  Konfiguracja walidatora: mapowanie kolumn, reguły i format importu.
+#
+#  Dostosowanie narzędzia do pliku innego dostawcy albo do formatu
+#  innego systemu ERP to edycja tego pliku. Kod pozostaje bez zmian.
+# =====================================================================
+
+# --- Plik źródłowy (np. arkusz od dostawcy) --------------------------
+source:
+  sheet: null            # null = pierwszy arkusz; można podać nazwę arkusza
+  # Pole wewnętrzne -> nagłówki akceptowane w pliku źródłowym.
+  # Porównanie ignoruje wielkość liter, polskie znaki, spacje i podkreślenia,
+  # więc "Data ważności", "data_waznosci" i "DATA WAZNOSCI" to ta sama kolumna.
+  fields:
+    sku:
+      label: SKU
+      headers: [SKU, Indeks, Kod produktu]
+      required: true
+    ean:
+      label: EAN
+      headers: [EAN, EAN13, EAN-13, Kod EAN, Kod kreskowy]
+      required: true
+    name:
+      label: Nazwa
+      headers: [Nazwa, Nazwa produktu]
+      required: true
+    weight:
+      label: Waga
+      headers: [Waga, Gramatura, Masa netto]
+      required: true
+    price:
+      label: Cena netto
+      headers: [Cena_netto, Cena netto, Cena netto PLN]
+      required: true
+    expiry:
+      # Pole daty: "delivery" (termin dostawy) albo "expiry" (data ważności).
+      # Wybrana nazwa decyduje o tym, jak narzędzie sprawdza datę.
+      label: Data dostawy
+      headers: [Data_dostawy, Data dostawy, Termin dostawy]
+      required: true
+    category:
+      label: Kategoria
+      headers: [Kategoria]
+      required: false
+    description:
+      label: Opis
+      headers: [Opis, Opis produktu]
+      required: false
+
+# --- Reguły walidacji (warstwa 1, deterministyczny kod) ----------------
+rules:
+  # Akceptowane formaty dat, sprawdzane po kolei. "15/03/26" = DD/MM/RR.
+  date_formats: ["%Y-%m-%d", "%d.%m.%Y", "%d.%m.%y", "%d/%m/%Y", "%d/%m/%y", "%d-%m-%Y", "%Y/%m/%d"]
+  # Data odniesienia dla terminów. null = dzisiejsza data.
+  reference_date: null
+  # Dla trybu expiry: termin krótszy niż tyle dni = ostrzeżenie (import możliwy).
+  short_expiry_days: 90
+  # Waga bez jednostki ("450"): null = błąd, "g" lub "kg" = przyjmij tę jednostkę.
+  weight_unit_if_missing: null
+  # Porównaj wagę zapisaną w nazwie ("... 450 g") z kolumną wagi.
+  check_weight_in_name: true
+  # Cennik (CSV: SKU;Cena_netto_PLN). Gdy w pliku brakuje ceny, narzędzie bierze ją stąd;
+  # SKU spoza cennika trafia do ręcznej weryfikacji. null = brak ceny to błąd.
+  price_list: data/cennik.csv
+  # Kartoteka produktów (CSV: SKU;EAN;Nazwa;Waga_g[;Rozmiar;Kolor];Kategoria;Segment). Kolumna wagi
+  # może nazywać się Waga_g albo Gramatura_g; Rozmiar i Kolor są opcjonalne. Wiersz rozpoznany
+  # po SKU, EAN albo nazwie dostaje z kartoteki poprawny EAN, SKU, wagę, nazwę i kategorię;
+  # AI kategoryzuje tylko produkty, których kartoteka nie zna. null = bez kartoteki.
+  product_master: data/kartoteka.csv
+
+# --- AI (warstwa 2): tylko tekst nieustrukturyzowany -------------------
+ai:
+  # Wartości domyślne. Nadpisują je zmienne środowiskowe LLM_BASE_URL i LLM_MODEL.
+  # Klucz API wyłącznie w zmiennej LLM_API_KEY (plik .env), nigdy tutaj.
+  base_url: https://api.deepseek.com
+  model: deepseek-flash
+  temperature: 0
+  max_tokens: 4000
+  batch_size: 10           # wierszy w jednym zapytaniu
+  max_parallel: 4          # zapytań wysyłanych równolegle
+  api_retries: 3           # ponowienia przy błędzie API (z wykładniczym backoffem)
+  timeout_seconds: 45
+  # Poniżej tego progu wiersz trafia do ręcznej weryfikacji (nie zgadujemy).
+  confidence_threshold: 0.75
+  # Parametry specyficzne dla dostawcy, przekazywane w treści zapytania bez zmian.
+  # DeepSeek: tryb bez "thinking" jest szybszy i tańszy przy prostej klasyfikacji.
+  extra_body:
+    thinking:
+      type: disabled
+  categories:
+    # Lista kategorii tego wdrożenia. AI przypisuje wyłącznie z tej listy.
+    - Kategoria pierwsza
+    - Kategoria druga
+    - Kategoria trzecia
+  segments: [detal, hurt]
+  # Cennik do szacowania kosztu: USD za 1 mln tokenów. Stawki szczytowe
+  # deepseek-flash z dokumentacji DeepSeek (11.2026), więc szacunek jest zawyżony.
+  pricing:
+    input_per_1m: 0.30
+    input_cached_per_1m: 0.006
+    output_per_1m: 1.20
+  usd_to_pln: 3.65         # kurs orientacyjny, tylko do wyświetlenia kosztu w zł
+
+# --- Wyjście (warstwa 3) ------------------------------------------------
+output:
+  dir: output
+  import_csv:
+    file: clean_import.csv
+    separator: ";"
+    # UTF-8 z BOM (utf-8-sig): Excel poprawnie pokazuje polskie znaki.
+    # Jeśli system docelowy nie akceptuje BOM, ustaw: utf-8
+    encoding: utf-8-sig
+    decimal_separator: ","
+    date_format: "%Y-%m-%d"
+    # Kolumny pliku importu, w kolejności: nagłówek w systemie ERP <- pole wewnętrzne.
+    # Dostępne pola: sku, ean, name, weight_g, price, expiry, category, segment
+    columns:
+      - {header: SKU, field: sku}
+      - {header: EAN, field: ean}
+      - {header: Nazwa, field: name}
+      - {header: Waga_g, field: weight_g}
+      - {header: Cena_netto_PLN, field: price}
+      - {header: Data_dostawy, field: delivery}
+      - {header: Kategoria, field: category}
+      - {header: Segment, field: segment}
+  error_report: error_report.xlsx
+  manual_review: manual_review.xlsx
+  sqlite: products.db

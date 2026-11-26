@@ -1,0 +1,7 @@
+# Na serwer trafia tylko strona: bez lokalnych folderów roboczych i bez sekretów.
+.taste-skill
+shots
+.env*
+.vercel
+.gitignore
+.vercelignore

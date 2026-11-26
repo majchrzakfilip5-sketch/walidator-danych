@@ -1,0 +1,25 @@
+# Dane klienta i wyniki: nigdy w repo
+profil-*/
+dist-*/
+data/
+inbox/
+output/
+processed/
+*.xlsx
+*.csv
+*.db
+
+# Sekrety
+.env
+.env.*
+!.env.example
+
+# Srodowisko
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+.vercel/
+.taste-skill/
+shots/

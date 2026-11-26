@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Znak: pierwsza litera nazwy na zaokrąglonym kwadracie w kolorze atramentu strony (--p-ink) -->
+  <rect width="32" height="32" rx="8" fill="#06525c"/>
+  <path d="M7.5 10h2.6l2.2 9.2 2.4-9.2h2.6l2.4 9.2 2.2-9.2h2.6l-3.5 13h-2.6L16.1 14l-2.3 9h-2.6z" fill="#f7f9f8"/>
+</svg>

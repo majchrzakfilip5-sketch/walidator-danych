@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.xlsx binary
+*.db binary
+*.png binary
+*.ico binary
+web/downloads/** -text
+*.csv -text
+
+# Powloka strony pochodzi z systemu designu: zachowujemy bajty 1:1,
+# zeby z repo + profilu dalo sie odtworzyc strone co do bajtu.
+web/assets/** -text
+web/*.tpl -text

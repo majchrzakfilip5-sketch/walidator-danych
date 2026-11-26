@@ -1,0 +1,10 @@
+[project]
+name = "walidator-importu-erp"
+version = "1.0.0"
+description = "Walidacja, normalizacja i kategoryzacja danych produktowych przed importem do systemu ERP."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
