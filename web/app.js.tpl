@@ -209,6 +209,32 @@ function verdict(r) {
   return `Trafia do pliku importu${fixes ? ` po ${plural(fixes, "poprawce", "poprawkach", "poprawkach")}` : " bez zmian"}.${how}`;
 }
 
+/* Diff na poziomie slow: podswietla wylacznie to, co sie naprawde zmienilo.
+   Bez tego drobna poprawka wyglada, jakby obok przekreslonej wartosci wpisano
+   prawie to samo. Najdluzszy wspolny podciag slow, reszta to zmiany. */
+function slowaDiff(a, b) {
+  const A = String(a).split(/(\s+)/), B = String(b).split(/(\s+)/);
+  const n = A.length, m = B.length;
+  const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) {
+    for (let j = m - 1; j >= 0; j--) {
+      dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+  const zA = new Array(n).fill(false), zB = new Array(m).fill(false);
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (A[i] === B[j]) { i++; j++; }
+    else if (dp[i + 1][j] >= dp[i][j + 1]) zA[i++] = true;
+    else zB[j++] = true;
+  }
+  while (i < n) zA[i++] = true;
+  while (j < m) zB[j++] = true;
+  const zloz = (cz, zm) => cz.map((t, k) => (zm[k] && t.trim() ? `<mark>${esc(t)}</mark>` : esc(t))).join("");
+  return [zloz(A, zA), zloz(B, zB)];
+}
+
+
 function diffCells(c, issues) {
   const before = c.before === "" ? `<div class="diff__v is-empty">(puste)</div>` : null;
   const fieldIssue = issues.find((i) => i.field === c.label && i.severity !== "fixed");
@@ -223,8 +249,9 @@ function diffCells(c, issues) {
       <div class="diff__v is-warn">${esc(c.after || c.before)}${fieldIssue ? ` <span>(${esc(fieldIssue.title.toLowerCase())})</span>` : ""}</div>`;
   }
   if (c.state === "changed") {
-    return `${before || `<div class="diff__v is-del">${esc(c.before)}</div>`}
-      <div class="diff__v is-add">${esc(c.after)}${src}</div>`;
+    const [przed, po] = slowaDiff(c.before, c.after);
+    return `${before || `<div class="diff__v is-del">${przed}</div>`}
+      <div class="diff__v is-add">${po}${src}</div>`;
   }
   return `${before || `<div class="diff__v">${esc(c.before)}</div>`}
     <div class="diff__v${c.after === "" ? " is-empty" : ""}">${c.after === "" ? "(puste)" : esc(c.after)}</div>`;

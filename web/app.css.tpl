@@ -214,6 +214,9 @@
 .diff__v.is-empty { font-family: var(--font-text); font-style: italic; color: var(--u-muted); }
 .diff__v.is-del { background: var(--bad-bg); color: #7a1d16; text-decoration: line-through; text-decoration-color: color-mix(in oklab, var(--bad-ink) 55%, transparent); }
 .diff__v.is-add { background: var(--ok-bg); color: var(--ok-text); }
+/* Zmieniony fragment w porownaniu przed/po: ciemniejszy slad w kolorze swojego tla. */
+.diff__v mark { background: color-mix(in oklab, currentColor 20%, transparent); color: inherit;
+  border-radius: 3px; padding: 0 2px; text-decoration: inherit; }
 .diff__v.is-bad { color: var(--bad-ink); }
 .diff__v.is-err { background: var(--wait-bg); color: var(--wait-text); font-family: var(--font-text); }
 .diff__v.is-warn { background: var(--wait-bg); color: var(--wait-text); }
